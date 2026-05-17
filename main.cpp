@@ -39,8 +39,11 @@ int main() {
         double time_orig = std::chrono::duration<double>(t1 - t0).count();
 
         // ── ALNS solver ──
+        ALNSParams alns_params;
+        alns_params.max_iterations = 300;
+        alns_params.verbose = false;
         auto t2 = std::chrono::high_resolution_clock::now();
-        auto result = solve_alns(prob, 300, 15, 50.0, 0.995, false);
+        auto result = solve_alns(prob, alns_params);
         auto t3 = std::chrono::high_resolution_clock::now();
         double time_alns = std::chrono::duration<double>(t3 - t2).count();
 

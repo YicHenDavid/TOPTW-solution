@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOPTW + ALNS — 完整项目报告</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.11.0/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.11.0/lib/highlight.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#fff;--fg:#1a1a2e;--muted:#6b7280;--accent:#7c3aed;--accent-bg:#f5f3ff;--border:#e5e7eb;--code-bg:#f8fafc;--sidebar-w:260px;--max-w:860px;--radius:6px}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;color:var(--fg);background:var(--bg);line-height:1.75;display:flex;min-height:100vh}
+nav{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:#f9fafb;border-right:1px solid var(--border);padding:28px 20px;overflow-y:auto;z-index:10}
+nav .title{font-size:17px;font-weight:700;color:var(--accent);margin-bottom:4px}
+nav .subtitle{font-size:12px;color:var(--muted);margin-bottom:20px}
+nav a{display:block;padding:5px 10px;margin-bottom:1px;font-size:13px;color:var(--fg);text-decoration:none;border-radius:4px;transition:background .12s}
+nav a:hover{background:var(--accent-bg);color:var(--accent)}
+nav a.l2{padding-left:24px;font-size:12px}
+nav a.l3{padding-left:36px;font-size:11.5px}
+main{margin-left:var(--sidebar-w);max-width:var(--max-w);width:100%;padding:48px 48px 80px}
+h1{font-size:2rem;font-weight:800;letter-spacing:-.4px;margin-bottom:4px}
+h2{font-size:1.35rem;font-weight:700;margin:44px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+h3{font-size:1.1rem;font-weight:600;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:1rem;font-weight:600;margin:20px 0 6px}
+p{margin:10px 0} ul,ol{margin:8px 0 8px 22px} li{margin:3px 0}
+code{font-family:"JetBrains Mono","Fira Code","SF Mono",Consolas,monospace;font-size:.88em}
+p>code,li>code,td>code{background:var(--code-bg);border:1px solid var(--border);border-radius:4px;padding:1px 6px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;overflow-x:auto;margin:14px 0;font-size:.84em;line-height:1.6}
+pre code{background:none;border:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.92em;border-radius:var(--radius);overflow:hidden}
+th,td{border:1px solid var(--border);padding:9px 14px;text-align:left}
+th{background:#f9fafb;font-weight:600}
+tr:nth-child(even) td{background:#fafbfc}
+.callout{border-left:3px solid var(--accent);background:var(--accent-bg);padding:12px 18px;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0;font-size:.94em}
+.callout-title{font-weight:700;color:var(--accent);margin-bottom:4px}
+.file-tag{display:inline-block;background:#f3f4f6;border:1px solid var(--border);border-radius:3px;padding:0 6px;font-size:.8em;font-family:monospace;color:var(--muted)}
+.layers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.layers .card{border:2px solid var(--border);border-radius:8px;padding:16px;text-align:center;font-size:.84em}
+.layers .card .icon{font-size:1.8em;display:block;margin-bottom:6px}
+@media(max-width:768px){nav{display:none}main{margin-left:0;padding:24px 16px 60px}.layers{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="title">TOPTW + ALNS</div>
+  <div class="subtitle">C++17 项目 · 完整算法报告</div>
+  <a href="#sec0">0. 项目结构</a>
+  <a href="#sec1">1. 问题定义</a>
+  <a href="#sec2">2. 解的表示 &amp; 解码器</a>
+  <a href="#sec3">3. GRASP 初始构造</a>
+  <a href="#sec4">4. 局部搜索</a>
+  <a class="l2" href="#sec4-1">4.1 2-opt</a>
+  <a class="l2" href="#sec4-2">4.2 Relocate</a>
+  <a class="l2" href="#sec4-3">4.3 Exchange</a>
+  <a href="#sec5">5. ALNS 框架</a>
+  <a class="l2" href="#sec5-1">5.1 Destroy 算子</a>
+  <a class="l3" href="#sec5-1a">Random Removal</a>
+  <a class="l3" href="#sec5-1b">Shaw Removal</a>
+  <a class="l3" href="#sec5-1c">Worst Removal</a>
+  <a class="l2" href="#sec5-2">5.2 Repair 算子</a>
+  <a class="l3" href="#sec5-2a">Greedy Insertion</a>
+  <a class="l3" href="#sec5-2b">Regret Insertion</a>
+  <a class="l3" href="#sec5-2c">Noise Insertion</a>
+  <a class="l2" href="#sec5-3">5.3 元启发式三层</a>
+  <a class="l3" href="#sec5-3a">Layer 1: SA 接受</a>
+  <a class="l3" href="#sec5-3b">Layer 2: Tabu 记忆</a>
+  <a class="l3" href="#sec5-3c">Layer 3: 自适应权重</a>
+  <a href="#sec6">6. 完整流程图</a>
+  <a href="#sec7">7. 算法复杂度</a>
+  <a href="#sec8">8. 基准测试结果</a>
+</nav>
+
+<main>
+
+<h1>TOPTW + ALNS 项目报告</h1>
+<p style="color:var(--muted);font-size:1.05em">C++17 · Header-only · 29 个标准算例 · 三层元启发式</p>
+
+<!-- ══════════════════════ 0 ══════════════════════ -->
+<h2 id="sec0">0. 项目结构</h2>
+<table>
+  <tr><th>文件</th><th>负责</th></tr>
+  <tr><td><span class="file-tag">problem.hpp</span></td><td><code>Problem</code> 结构体 + <code>generate_problem()</code> 随机实例</td></tr>
+  <tr><td><span class="file-tag">evaluate.hpp</span></td><td>解码器：到达时间递推 + 可行性检查 + 分数计算</td></tr>
+  <tr><td><span class="file-tag">construct.hpp</span></td><td>GRASP 贪心随机自适应构造</td></tr>
+  <tr><td><span class="file-tag">local_search.hpp</span></td><td>2-opt / Relocate / Exchange 局部搜索算子</td></tr>
+  <tr><td><span class="file-tag">solver.hpp</span></td><td>原始多起点求解器</td></tr>
+  <tr><td><span class="file-tag">instance_loader.hpp</span></td><td>标准算例文件加载器</td></tr>
+  <tr><td><span class="file-tag">alns_solver.hpp</span></td><td><strong>ALNS 求解器</strong> — 3 destroy + 3 repair + 3 metaheuristic layers</td></tr>
+  <tr><td><span class="file-tag">main.cpp</span></td><td>入口：加载算例 → 原始求解器 vs ALNS 对比</td></tr>
+</table>
+
+<!-- ══════════════════════ 1 ══════════════════════ -->
+<h2 id="sec1">1. 问题定义 — TOPTW</h2>
+<p><strong>TOPTW (Team Orienteering Problem with Time Windows)</strong>：m 个队员、n 个地点，各有分数 sᵢ、服务时间 dᵢ、时间窗 [oᵢ, cᵢ]，时间预算 Tmax。目标：最大化总收集分数，每点最多访问一次。</p>
+<table>
+  <tr><th>字段</th><th>类型</th><th>含义</th></tr>
+  <tr><td><code>n, m</code></td><td><code>int</code></td><td>总节点数（含 depot）、队员数</td></tr>
+  <tr><td><code>Tmax</code></td><td><code>double</code></td><td>每队时间预算</td></tr>
+  <tr><td><code>depot_start/end</code></td><td><code>int</code></td><td>起点/终点节点索引（均为 0）</td></tr>
+  <tr><td><code>x, y</code></td><td><code>vector&lt;double&gt;</code></td><td>节点坐标</td></tr>
+  <tr><td><code>dist</code></td><td><code>vector&lt;vector&lt;double&gt;&gt;</code></td><td>欧几里得距离矩阵</td></tr>
+  <tr><td><code>scores</code></td><td><code>vector&lt;int&gt;</code></td><td>各节点分数；depot = 0</td></tr>
+  <tr><td><code>service</code></td><td><code>vector&lt;double&gt;</code></td><td>服务时间；depot = 0</td></tr>
+  <tr><td><code>tw_open/close</code></td><td><code>vector&lt;double&gt;</code></td><td>时间窗 [o, c]；depot = [0, Tmax]</td></tr>
+</table>
+
+<!-- ══════════════════════ 2 ══════════════════════ -->
+<h2 id="sec2">2. 解的表示 &amp; 解码器</h2>
+<p>解 = m 条路径，每条是 <code>vector&lt;int&gt;</code> 节点序列。采用间接表达：只存访问顺序，到达时间由解码器递推。</p>
+<div class="math math-display">arrive_k = \max(arrive_{k-1} + d_i + dist(i,j),\; o_j)</div>
+<table>
+  <tr><th>变量</th><th>含义</th></tr>
+  <tr><td><code>arriveₖ</code></td><td>在路径位置 k（节点 j）的到达时间</td></tr>
+  <tr><td><code>arriveₖ₋₁ + dᵢ + dist(i,j)</code></td><td>自然到达时间</td></tr>
+  <tr><td><code>oⱼ</code></td><td>节点 j 时间窗开门时间；早到则等待</td></tr>
+</table>
+<p>两条检查：① <span class="math">arrive_k \leq c_j</span>（不晚于关门） ② <span class="math">arrive_k + d_j + dist(j, end) \leq T_{max}</span>（能回终点）</p>
+
+<!-- ══════════════════════ 3 ══════════════════════ -->
+<h2 id="sec3">3. GRASP 贪心随机自适应构造</h2>
+<p>从空路径开始，反复插入未访问节点到性价比最高位置：</p>
+<div class="math math-display">ratio(node, team, pos) = \frac{scores[node]}{\max(insertion\_cost,\; 0.01)}</div>
+<p><strong>RCL 随机化</strong>：α = 0 → 纯贪心；α > 0 → 从前 <span class="math">\alpha \times |candidates|</span> 个候选中随机选。多起点：10 次构造，α 从 0 递增到 0.27。</p>
+
+<!-- ══════════════════════ 4 ══════════════════════ -->
+<h2 id="sec4">4. 局部搜索算子</h2>
+<h3 id="sec4-1">4.1 2-opt（路径内反转）</h3>
+<p>断边 {i,i+1} 和 {j,j+1}，重连 {i,j} 和 {i+1,j+1}，中间段反转。O(L²)。</p>
+<h3 id="sec4-2">4.2 Relocate（跨路径迁移）</h3>
+<p>从路线 A 移除 v，插入路线 B。O(m²·n·L²)。</p>
+<h3 id="sec4-3">4.3 Exchange（跨路径交换）</h3>
+<p>路线 A 的 a ⇄ 路线 B 的 b 互换。O(m²·L²)。</p>
+
+<!-- ══════════════════════ 5 ══════════════════════ -->
+<h2 id="sec5">5. ALNS 框架</h2>
+<p>ALNS (Adaptive Large Neighborhood Search) 是全局优化框架。核心循环：选 destroy + repair 算子 → 破坏 → 修复 → 局部搜索 → 决定接受/拒绝。</p>
+
+<div class="layers">
+  <div class="card" style="border-color:#f87171"><span class="icon">🌡️</span><strong>Layer 1<br>Simulated Annealing</strong><p style="font-size:.78em;color:var(--muted)">决定是否接受<br>比当前差的解</p></div>
+  <div class="card" style="border-color:#fbbf24"><span class="icon">🚫</span><strong>Layer 2<br>Tabu Search</strong><p style="font-size:.78em;color:var(--muted)">刚移除的节点<br>短期内禁止重插</p></div>
+  <div class="card" style="border-color:#34d399"><span class="icon">🎰</span><strong>Layer 3<br>Adaptive Weights</strong><p style="font-size:.78em;color:var(--muted)">根据历史表现<br>自动选最优算子</p></div>
+</div>
+
+<h3 id="sec5-1">5.1 Destroy 算子</h3>
+
+<h4 id="sec5-1a">① Random Removal</h4>
+<p>从已访问节点中<strong>均匀随机</strong>选出 q 个。最基础、最快的破坏方式。</p>
+
+<h4 id="sec5-1b">② Shaw Removal</h4>
+<p>选一个随机种子，移除与其<strong>最相关</strong>的 q 个节点。相关性 = 距离相似度（权重 0.6）+ 时间窗重叠度（权重 0.4），加入随机噪声避免每次都一样。</p>
+<div class="math math-display">
+relatedness(v, seed) = 0.6 \cdot \frac{dist(seed, v)}{\max\_dist} + 0.4 \cdot (1 - tw\_overlap) + noise
+</div>
+
+<h4 id="sec5-1c">③ Worst Removal</h4>
+<p>移除 <strong>score / insertion_cost</strong> 比值最低的 q 个节点——"性价比最差的"。公式：</p>
+<div class="math math-display">
+ratio(v) = \frac{scores[v]}{dist(prev, v) + dist(v, next) - dist(prev, next)}
+</div>
+
+<h3 id="sec5-2">5.2 Repair 算子</h3>
+
+<h4 id="sec5-2a">① Greedy Insertion</h4>
+<p>每轮选 <strong>score / cost</strong> 最大的 (node, route, pos) 组合插入。纯贪心，最快。</p>
+
+<h4 id="sec5-2b">② Regret-k Insertion</h4>
+<p>每轮选 <strong>regret 最大</strong> 的节点先插。Regret = 第 k 优的 cost 之和 − k × 最优 cost。k 越大越保守（默认 k=3）。直觉：不插这个节点会"后悔"，因为它只有少数好位置。</p>
+<div class="math math-display">
+regret(node) = \sum_{r=1}^{k} (cost_{(r)} - cost_{best})
+</div>
+
+<h4 id="sec5-2c">③ Noise Insertion</h4>
+<p>在贪心插入的基础上，对 cost 施加随机扰动：<span class="math">cost_{noisy} = cost \times (1 + U(-\eta, +\eta))</span>。噪声水平 η 默认 0.15。目的：增加多样性，避免总是插入相同节点。</p>
+
+<h3 id="sec5-3">5.3 元启发式三层</h3>
+
+<h4 id="sec5-3a">Layer 1 — Simulated Annealing（接受准则）</h4>
+<p>决定是否接受一个"不如当前解"的新解。Metropolis 准则：</p>
+<div class="math math-display">
+P_{accept} = \begin{cases} 1 & \text{if } f(x') > f(x) \\ \exp(\frac{f(x') - f(x)}{T}) & \text{otherwise} \end{cases}
+</div>
+<p>参数：T₀ = 50.0，冷却因子 α = 0.995（每轮 T ← 0.995·T）。高温 → 大量接受差解（探索）；低温 → 近似贪心（利用）。</p>
+
+<h4 id="sec5-3b">Layer 2 — Tabu Search（禁忌记忆）</h4>
+<p>每个被 Destroy 移除的节点，在 <strong>tabu_tenure</strong>（默认 12）轮内禁止被重新插入。防止搜索在同一组节点上来回震荡——刚移除的节点马上又插回去等于白做。</p>
+<table>
+  <tr><th>参数</th><th>默认值</th><th>作用</th></tr>
+  <tr><td><code>tabu_tenure</code></td><td>12</td><td>禁忌期长度（迭代次数）</td></tr>
+  <tr><td>数据结构</td><td><code>map&lt;int,int&gt;</code></td><td>node → 解禁迭代号</td></tr>
+</table>
+
+<h4 id="sec5-3c">Layer 3 — Adaptive Weights（自适应权重）</h4>
+<p>每轮轮盘赌选 destroy + repair，执行后根据结果更新权重：</p>
+<div class="math math-display">
+p_j = \frac{\rho_j}{\sum_k \rho_k}, \qquad \rho_{selected} = \lambda \cdot \rho_{selected} + (1-\lambda) \cdot \psi
+</div>
+<table>
+  <tr><th>奖励 ψ</th><th>条件</th><th>值</th></tr>
+  <tr><td>ω₁</td><td>新解 = 全局最优</td><td>30</td></tr>
+  <tr><td>ω₂</td><td>优于当前解</td><td>10</td></tr>
+  <tr><td>ω₃</td><td>被 SA 接受（差解）</td><td>3</td></tr>
+  <tr><td>ω₄</td><td>被拒绝</td><td>0</td></tr>
+</table>
+
+<!-- ══════════════════════ 6 ══════════════════════ -->
+<h2 id="sec6">6. 完整算法流程</h2>
+<pre><code class="language-plaintext">╔═══════════════════════════════════════════════════════════╗
+║                TOPTW + ALNS 完整流程                       ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  Step 1  加载算例            load_instance("c101.txt")     ║
+║  Step 2  GRASP 构造初始解    10 restarts, α: 0→0.27       ║
+║  Step 3  局部搜索打磨        2-opt → relocate → exchange   ║
+║  Step 4  ALNS 主循环 (×500):                              ║
+║    ┌─────────────────────────────────────────────┐        ║
+║    │ 4.1 Layer 3: 轮盘赌选 destroy + repair       │        ║
+║    │ 4.2 Destroy: 随机 / Shaw / Worst 移除 q 节点  │        ║
+║    │ 4.3 Layer 2: 过滤 tabu 节点                  │        ║
+║    │ 4.4 Repair: Greedy / Regret-k / Noise 重插   │        ║
+║    │ 4.5 Layer 2: 标记被移除节点为 tabu           │        ║
+║    │ 4.6 局部搜索: 2-opt → relocate → exchange     │        ║
+║    │ 4.7 Layer 1: SA 准则决定接受/拒绝             │        ║
+║    │ 4.8 Layer 3: 更新所选算子权重                 │        ║
+║    │ 4.9 Layer 1: 降温 T ← α × T                  │        ║
+║    └─────────────────────────────────────────────┘        ║
+║  Step 5  输出全局最优解                                    ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝</code></pre>
+
+<!-- ══════════════════════ 7 ══════════════════════ -->
+<h2 id="sec7">7. 算法复杂度分析</h2>
+<table>
+  <tr><th>阶段</th><th>复杂度</th><th>主导因素</th></tr>
+  <tr><td>GRASP 构造（单次）</td><td><span class="math">O(m \cdot n^2 \cdot L)</span></td><td>枚举所有 (node×route×pos)</td></tr>
+  <tr><td>2-opt</td><td><span class="math">O(m \cdot L^2)</span></td><td>枚举所有 (i,j) 对</td></tr>
+  <tr><td>Relocate</td><td><span class="math">O(m^2 \cdot n \cdot L^2)</span></td><td>枚举所有 (src, dst, node, pos)</td></tr>
+  <tr><td>Exchange</td><td><span class="math">O(m^2 \cdot L^2)</span></td><td>枚举所有 (r1, r2, pos1, pos2)</td></tr>
+  <tr><td>Random/Shaw/Worst Destroy</td><td><span class="math">O(n \log n)</span></td><td>排序或洗牌</td></tr>
+  <tr><td>Greedy/Regret/Noise Repair</td><td><span class="math">O(q \cdot m \cdot n \cdot L)</span></td><td>q 个节点 × 枚举位置</td></tr>
+  <tr><td>ALNS 每轮</td><td><span class="math">O(m^2 \cdot n \cdot L^2)</span></td><td>LS 支配，repair 次要</td></tr>
+  <tr><td style="border-top:2px solid var(--accent)"><strong>ALNS 总计</strong></td><td style="border-top:2px solid var(--accent)"><strong><span class="math">O(\text{iter} \cdot m^2 \cdot n \cdot L^2)</span></strong></td><td></td></tr>
+</table>
+
+<!-- ══════════════════════ 8 ══════════════════════ -->
+<h2 id="sec8">8. 基准测试结果</h2>
+<p>29 个标准算例（Righini &amp; Salani 2006），每个 100 客户 + 1 depot。C 类：宽时间窗（Tmax=1236）；R/RC 类：窄时间窗（Tmax=230/240）。</p>
+<table>
+  <tr><th>类型</th><th>数量</th><th>m</th><th>Tmax</th><th>总分</th><th>得分区间</th></tr>
+  <tr><td>C (clustered)</td><td>9</td><td>4</td><td>1236</td><td>9000</td><td>7380 ~ 8910</td></tr>
+  <tr><td>R (random)</td><td>12</td><td>4</td><td>230</td><td>1000</td><td>290 ~ 440</td></tr>
+  <tr><td>RC (mixed)</td><td>8</td><td>4</td><td>240</td><td>1000</td><td>290 ~ 370</td></tr>
+</table>
+<p>C 类时间窗宽（单个窗口可达 ~1000 单位），每节点分数高（=90），得分率 82%~99%。R/RC 类时间窗极窄（~10 单位），每节点分数低（=10），得分率 29%~44%。</p>
+<p>原始多起点求解器和 ALNS 在 29 个算例上均获总分 <strong>81950</strong>。ALNS 保持了原始求解器的解的质量，同时通过三层元启发式增加了鲁棒性。</p>
+
+</main>
+<script>
+document.addEventListener("DOMContentLoaded",function(){
+  document.querySelectorAll("span.math").forEach(el=>{try{katex.render(el.textContent,el,{throwOnError:false})}catch(e){}});
+  document.querySelectorAll(".math-display").forEach(el=>{try{katex.render(el.textContent,el,{displayMode:true,throwOnError:false})}catch(e){}});
+  renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});
+  document.querySelectorAll("pre code").forEach(b=>hljs.highlightElement(b));
+});
+</script>
+</body>
+</html>
