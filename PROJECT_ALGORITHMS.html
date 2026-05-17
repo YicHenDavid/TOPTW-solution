@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOPTW + ALNS — 完整项目算法文档</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.11.0/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.11.0/lib/highlight.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#fff;--fg:#1a1a2e;--muted:#6b7280;--accent:#7c3aed;--accent-bg:#f5f3ff;--border:#e5e7eb;--code-bg:#f8fafc;--sidebar-w:260px;--max-w:860px;--radius:6px}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;color:var(--fg);background:var(--bg);line-height:1.75;display:flex;min-height:100vh}
+nav{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:#f9fafb;border-right:1px solid var(--border);padding:28px 20px;overflow-y:auto;z-index:10}
+nav .title{font-size:17px;font-weight:700;color:var(--accent);margin-bottom:4px}
+nav .subtitle{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.4}
+nav a{display:block;padding:5px 10px;margin-bottom:1px;font-size:13px;color:var(--fg);text-decoration:none;border-radius:4px;transition:background .12s}
+nav a:hover{background:var(--accent-bg);color:var(--accent)}
+nav a.l2{padding-left:24px;font-size:12px}
+main{margin-left:var(--sidebar-w);max-width:var(--max-w);width:100%;padding:48px 48px 80px}
+h1{font-size:2rem;font-weight:800;letter-spacing:-.4px;margin-bottom:4px}
+h2{font-size:1.35rem;font-weight:700;margin:44px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+h3{font-size:1.1rem;font-weight:600;margin:30px 0 10px;color:var(--accent)}
+h4{font-size:1rem;font-weight:600;margin:20px 0 6px}
+p{margin:10px 0}
+ul,ol{margin:8px 0 8px 22px}
+li{margin:3px 0}
+code{font-family:"JetBrains Mono","Fira Code","SF Mono",Consolas,monospace;font-size:.88em}
+p>code,li>code,td>code{background:var(--code-bg);border:1px solid var(--border);border-radius:4px;padding:1px 6px}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;overflow-x:auto;margin:14px 0;font-size:.84em;line-height:1.6}
+pre code{background:none;border:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.92em;border-radius:var(--radius);overflow:hidden}
+th,td{border:1px solid var(--border);padding:9px 14px;text-align:left}
+th{background:#f9fafb;font-weight:600}
+tr:nth-child(even) td{background:#fafbfc}
+.callout{border-left:3px solid var(--accent);background:var(--accent-bg);padding:12px 18px;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0;font-size:.94em}
+.callout-title{font-weight:700;color:var(--accent);margin-bottom:4px}
+.file-tag{display:inline-block;background:#f3f4f6;border:1px solid var(--border);border-radius:3px;padding:0 6px;font-size:.8em;font-family:monospace;color:var(--muted)}
+@media(max-width:768px){nav{display:none}main{margin-left:0;padding:24px 16px 60px}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="title">TOPTW + ALNS</div>
+  <div class="subtitle">C++ 项目 · 完整算法文档</div>
+  <a href="#sec0">0. 项目结构</a>
+  <a href="#sec1">1. 问题定义</a>
+  <a href="#sec2">2. 解的表示 &amp; 解码器</a>
+  <a href="#sec3">3. 初始解构造 — GRASP</a>
+  <a href="#sec4">4. 局部搜索算子</a>
+  <a class="l2" href="#sec4-1">4.1 2-opt</a>
+  <a class="l2" href="#sec4-2">4.2 Relocate</a>
+  <a class="l2" href="#sec4-3">4.3 Exchange</a>
+  <a href="#sec5">5. ALNS 框架</a>
+  <a class="l2" href="#sec5-1">5.1 Destroy 算子</a>
+  <a class="l2" href="#sec5-2">5.2 Repair 算子</a>
+  <a class="l2" href="#sec5-3">5.3 自适应权重</a>
+  <a class="l2" href="#sec5-4">5.4 SA 接受准则</a>
+  <a href="#sec6">6. 完整算法流程</a>
+  <a href="#sec7">7. 复杂度分析</a>
+</nav>
+
+<main>
+
+<h1>TOPTW + ALNS 项目算法文档</h1>
+<p style="color:var(--muted);font-size:1.05em">
+  C++17 实现 · 头文件驱动 · 完整启发式求解器
+</p>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="sec0">0. 项目结构</h2>
+
+<table>
+  <tr><th>文件</th><th>负责什么</th></tr>
+  <tr><td><span class="file-tag">problem.hpp</span></td><td><code>Problem</code> 结构体 + <code>generate_problem()</code> 随机实例生成</td></tr>
+  <tr><td><span class="file-tag">evaluate.hpp</span></td><td>路径可行性验证（解码器）、分数计算、插入成本</td></tr>
+  <tr><td><span class="file-tag">construct.hpp</span></td><td>GRASP 贪心随机自适应构造</td></tr>
+  <tr><td><span class="file-tag">local_search.hpp</span></td><td>2-opt / Relocate / Exchange 局部搜索算子</td></tr>
+  <tr><td><span class="file-tag">solver.hpp</span></td><td>原始多起点求解器（10 次 GRASP + LS，取最优）</td></tr>
+  <tr><td><span class="file-tag">alns_solver.hpp</span></td><td><strong>ALNS 求解器</strong> — 3 个 destroy + 2 个 repair + 自适应权重 + SA 接受</td></tr>
+  <tr><td><span class="file-tag">main.cpp</span></td><td>入口：生成实例 → 原始求解器 → ALNS 求解器 → 对比输出</td></tr>
+</table>
+
+<p style="font-size:.84em;color:var(--muted)">
+  所有算法模块都是 header-only（<code>.hpp</code>），无编译依赖，直接 <code>#include</code> 即用。
+</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="sec1">1. 问题定义 — TOPTW</h2>
+
+<p>
+  <strong>TOPTW (Team Orienteering Problem with Time Windows)</strong>：<span class="math">m</span> 个队员，<span class="math">n</span> 个地点（含起终点），
+  每个地点 <span class="math">i</span> 有分数 <span class="math">s_i</span>、服务时间 <span class="math">d_i</span>、时间窗 <span class="math">[o_i, c_i]</span>。
+  每人时间预算 <span class="math">T_{max}</span>。目标：最大化总收集分数，每个地点最多访问一次。
+</p>
+
+<table>
+  <tr><th style="width:14%">字段</th><th>C++ 类型</th><th>含义</th></tr>
+  <tr><td><code>n</code></td><td><code>int</code></td><td>总节点数（含 depot_start=0, depot_end=n-1）</td></tr>
+  <tr><td><code>m</code></td><td><code>int</code></td><td>队员数量</td></tr>
+  <tr><td><code>Tmax</code></td><td><code>double</code></td><td>每队时间预算</td></tr>
+  <tr><td><code>x, y</code></td><td><code>vector&lt;double&gt;</code></td><td>节点坐标（[0,100] 区间）</td></tr>
+  <tr><td><code>dist</code></td><td><code>vector&lt;vector&lt;double&gt;&gt;</code></td><td>距离矩阵（欧几里得）</td></tr>
+  <tr><td><code>scores</code></td><td><code>vector&lt;int&gt;</code></td><td>各节点分数。起点/终点 = 0</td></tr>
+  <tr><td><code>service</code></td><td><code>vector&lt;double&gt;</code></td><td>服务时间。起点/终点 = 0</td></tr>
+  <tr><td><code>tw_open, tw_close</code></td><td><code>vector&lt;double&gt;</code></td><td>时间窗 [o, c]。起点/终点 = [0, Tmax]</td></tr>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="sec2">2. 解的表示 &amp; 解码器</h2>
+
+<p>
+  <strong>解 = m 条路径的集合</strong>，每条路径是 <code>vector&lt;int&gt;</code> 节点序列，首尾固定为起点和终点。<br>
+  采用 <strong>间接表达 (encode–decode)</strong>：只存访问顺序，到达时间由解码器递推计算。
+</p>
+
+<h3>解码器 — <code>evaluate_route()</code></h3>
+<p>遍历路径，递推每个节点的到达时间，每一步做两项检查：</p>
+
+<div class="math math-display">arrive_k = \max(arrive_{k-1} + d_i + dist(i,j),\; o_j)</div>
+
+<table>
+  <tr><th>变量</th><th>含义</th></tr>
+  <tr><td><code>arriveₖ</code></td><td>在第 <span class="math">k</span> 个位置（节点 <span class="math">j</span>）的实际到达时间</td></tr>
+  <tr><td><code>arriveₖ₋₁ + dᵢ + dist(i,j)</code></td><td>自然到达时间 = 上一节点到达 + 服务 + 旅行</td></tr>
+  <tr><td><code>oⱼ</code></td><td>节点 j 的时间窗开门时间。早到则等待</td></tr>
+</table>
+
+<p><strong>两条硬性检查（任意一条失败 → 路径不可行）</strong>：</p>
+<ol>
+  <li><strong>时间窗违规</strong>：<span class="math">arrive_k > c_j</span>（到达时窗口已关闭）</li>
+  <li><strong>回不到终点</strong>：<span class="math">arrive_k + d_j + dist(j, end) > T_{max}</span></li>
+</ol>
+
+<p style="font-size:.84em;color:var(--muted)">返回值：<code>std::optional&lt;vector&lt;double&gt;&gt;</code> — 可行则含到达时间数组，不可行则为 <code>std::nullopt</code></p>
+
+<hr>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="sec3">3. 初始解构造 — GRASP</h2>
+
+<p>
+  <strong>GRASP (Greedy Randomized Adaptive Search Procedure)</strong>：贪心插入 + RCL (Restricted Candidate List) 随机化。<br>
+  每次从「空路径」开始（每队只有 <code>[起点, 终点]</code>），反复将未访问节点插入到性价比最高的位置。
+</p>
+
+<p><strong>性价比</strong>：</p>
+<div class="math math-display">ratio(node, team, pos) = \frac{scores[node]}{\max(insertion\_cost,\; 0.01)}</div>
+
+<p>其中 <code>insertion_cost</code> = 插入该节点后终点到达时间的增量。</p>
+
+<p><strong>RCL 随机化</strong>：</p>
+<ul>
+  <li><span class="math">\alpha = 0</span>：纯贪心，选性价比最高的</li>
+  <li><span class="math">\alpha > 0</span>：候选按性价比降序排列，从前 <span class="math">\alpha \times |candidates|</span> 个中随机选一个</li>
+</ul>
+
+<p style="font-size:.84em;color:var(--muted)">
+  多起点策略：10 次构造，<span class="math">\alpha</span> 从 0 递增到 0.27，逐步增加随机性 → 取最优。
+</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="sec4">4. 局部搜索算子</h2>
+
+<p>三个算子按顺序迭代执行，直到总分不再提升（first-improvement 策略）。</p>
+
+<h3 id="sec4-1">4.1 2-opt（路径内反转）</h3>
+<p><strong>操作</strong>：选 <span class="math">i < j</span>，断开边 <span class="math">\{i,i+1\}</span> 和 <span class="math">\{j,j+1\}</span>，重连为 <span class="math">\{i,j\}</span> 和 <span class="math">\{i+1,j+1\}</span>。中间段被反转。</p>
+<p><strong>目的</strong>：消除路径交叉，缩短总距离。枚举所有 <span class="math">(i,j)</span> 对，保留使终点到达时间最短的解。</p>
+<p><strong>复杂度</strong>：<span class="math">O(L^2)</span>，<span class="math">L</span> = 路径长度。</p>
+
+<h3 id="sec4-2">4.2 Relocate（路径间迁移）</h3>
+<p><strong>操作</strong>：从路线 A 移除节点 v，插入到路线 B 的某个位置。</p>
+<p><strong>目的</strong>：释放 A 的时间 + B 利用空闲收编。枚举所有 (节点, 源路线, 目标路线, 插入位置)。</p>
+<p><strong>复杂度</strong>：<span class="math">O(m^2 \cdot n \cdot L^2)</span>。</p>
+
+<h3 id="sec4-3">4.3 Exchange（路径间交换）</h3>
+<p><strong>操作</strong>：路线 A 的节点 a ⇄ 路线 B 的节点 b 互换。</p>
+<p><strong>目的</strong>：两个节点各得其所。枚举所有 (路线对, 节点对)。</p>
+<p><strong>复杂度</strong>：<span class="math">O(m^2 \cdot L^2)</span>。</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="sec5">5. ALNS 框架</h2>
+
+<div class="callout">
+  <div class="callout-title">🧠 ALNS 的定位</div>
+  ALNS 是<strong>全局优化框架</strong>——它不亲自做构造或局部搜索，而是<strong>调度</strong> destroy/repair 算子<br>
+  来探索搜索空间，并通过自适应权重自动学习"哪个算子组合在当前阶段最有效"。
+</div>
+
+<p><strong>核心循环</strong>：</p>
+<pre><code class="language-plaintext">1. 从 GRASP + LS 得到初始解 x
+2. repeat:
+3.    轮盘赌选 destroy d + repair r（根据历史权重）
+4.    x' ← r(d(x))                  // destroy → repair
+5.    对 x' 做局部搜索 (2-opt + relocate + exchange)
+6.    SA 准则决定是否接受 x'
+7.    根据 x' 质量更新 d 和 r 的权重
+8.    降温 T ← α × T
+9. until 终止</code></pre>
+
+<h3 id="sec5-1">5.1 Destroy 算子（3 个）</h3>
+
+<table>
+  <tr><th>算子</th><th>策略</th><th>移除什么节点</th></tr>
+  <tr>
+    <td><strong>Random</strong></td>
+    <td>随机选择</td>
+    <td>从已访问节点中随机选 <span class="math">q</span> 个（<span class="math">q \approx 15\%</span> 的已访问节点）</td>
+  </tr>
+  <tr>
+    <td><strong>Related</strong></td>
+    <td>按距离聚类</td>
+    <td>随机选一个种子节点，移除离种子<strong>最近</strong>的 <span class="math">q</span> 个节点（地理相近的节点更容易通过重组改善）</td>
+  </tr>
+  <tr>
+    <td><strong>Worst</strong></td>
+    <td>按性价比</td>
+    <td>移除 <strong>score / insertion_cost</strong> 比值<strong>最低</strong>的 <span class="math">q</span> 个节点（"性价比最差的"，移除后可能换来更好的节点）</td>
+  </tr>
+</table>
+
+<h3 id="sec5-2">5.2 Repair 算子（2 个）</h3>
+
+<table>
+  <tr><th>算子</th><th>策略</th><th>如何重插</th></tr>
+  <tr>
+    <td><strong>Greedy</strong></td>
+    <td>贪心最佳优先</td>
+    <td>每轮选 <strong>score/cost 最大</strong> 的 (节点, 路线, 位置) 组合插入</td>
+  </tr>
+  <tr>
+    <td><strong>Regret-2</strong></td>
+    <td>后悔值优先</td>
+    <td>每轮选 <strong>regret = 第 2 优 cost − 最优 cost</strong> 最大的节点先插入<br>直觉：不插这个节点会"最后悔"，因为它只有一个好的插入位置</td>
+  </tr>
+</table>
+
+<h3 id="sec5-3">5.3 自适应权重机制</h3>
+
+<p><strong>轮盘赌选择</strong>：每轮根据当前权重，按概率选择一个 destroy 和一个 repair：</p>
+<div class="math math-display">p_j^- = \frac{\rho_j^-}{\sum_{k \in \Omega^-} \rho_k^-}, \qquad p_j^+ = \frac{\rho_j^+}{\sum_{k \in \Omega^+} \rho_k^+}</div>
+
+<table>
+  <tr><th>变量</th><th>含义</th></tr>
+  <tr><td><span class="math">\Omega^-, \Omega^+</span></td><td>destroy / repair 算子集合</td></tr>
+  <tr><td><span class="math">\rho_j</span></td><td>算子 j 的当前权重（越大越容易被选中）</td></tr>
+  <tr><td><span class="math">p_j</span></td><td>算子 j 被选中的概率 = 自身权重 / 总权重</td></tr>
+</table>
+
+<p><strong>权重更新</strong>（只更新本轮被选中的算子）：</p>
+<div class="math math-display">\rho_a^- = \lambda \rho_a^- + (1-\lambda)\psi, \qquad \rho_b^+ = \lambda \rho_b^+ + (1-\lambda)\psi</div>
+
+<table>
+  <tr><th>变量</th><th>C++ 值</th><th>含义</th></tr>
+  <tr><td><span class="math">\lambda</span></td><td><code>0.9</code></td><td>衰减因子。90% 保留旧权重，10% 来自新奖励</td></tr>
+  <tr><td><span class="math">\psi = \omega_1</span></td><td><code>30.0</code></td><td>新解 = 全局最优 → 最高奖励</td></tr>
+  <tr><td><span class="math">\psi = \omega_2</span></td><td><code>10.0</code></td><td>新解优于当前解</td></tr>
+  <tr><td><span class="math">\psi = \omega_3</span></td><td><code>3.0</code></td><td>新解被接受（不如当前但还行）</td></tr>
+  <tr><td><span class="math">\psi = \omega_4</span></td><td><code>0.0</code></td><td>新解被拒绝 → 无奖励</td></tr>
+</table>
+
+<h3 id="sec5-4">5.4 SA 接受准则</h3>
+
+<p>用模拟退火决定是否接受"不如当前解"的新解：</p>
+<div class="math math-display">
+P_{accept} = \begin{cases}
+1 & \text{if } f(x') > f(x) \text{ (更好)} \\
+\exp\left( \dfrac{f(x') - f(x)}{T} \right) & \text{if } f(x') \leq f(x) \text{ (更差)}
+\end{cases}
+</div>
+
+<table>
+  <tr><th>参数</th><th>C++ 默认值</th><th>含义</th></tr>
+  <tr><td><code>T_init</code></td><td>50.0</td><td>初始温度。足够高以允许初期大量探索</td></tr>
+  <tr><td><code>alpha_cool</code></td><td>0.995</td><td>几何冷却因子。每轮 T ← 0.995 × T</td></tr>
+  <tr><td><code>max_iterations</code></td><td>500</td><td>最大迭代次数</td></tr>
+  <tr><td><code>destroy_pct</code></td><td>15</td><td>每次 destroy 移除的节点百分比</td></tr>
+  <tr><td><code>early_stop</code></td><td>200 轮无改进</td><td>连续无全局改进则提前终止</td></tr>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="sec6">6. 完整算法流程</h2>
+
+<pre><code class="language-plaintext">╔══════════════════════════════════════════════════════╗
+║             TOPTW + ALNS 完整求解流程                 ║
+╠══════════════════════════════════════════════════════╣
+║                                                      ║
+║  ┌─────────────────┐                                 ║
+║  │ 生成随机实例      │  generate_problem()             ║
+║  │ n=32, m=3, T=200 │                                 ║
+║  └────────┬────────┘                                 ║
+║           ↓                                           ║
+║  ┌─────────────────┐                                 ║
+║  │ GRASP 构造初始解  │  10 restarts, α: 0→0.27        ║
+║  │ 每轮 + LS 打磨    │  construct_greedy()              ║
+║  └────────┬────────┘  + apply_local_search()          ║
+║           ↓                                           ║
+║  ┌─────────────────┐                                 ║
+║  │ ALNS 主循环       │  for iter = 0..max_iter:        ║
+║  │                  │                                 ║
+║  │  ① 轮盘赌选算子   │    select d ∈ {随机,相关,最差}    ║
+║  │  ② Destroy       │    移除 q 个节点                 ║
+║  │  ③ Repair        │    贪心 / Regret-2 重插          ║
+║  │  ④ Local Search  │    2-opt → relocate → exchange  ║
+║  │  ⑤ SA 接受 / 拒绝 │    Metropolis 准则              ║
+║  │  ⑥ 更新权重       │    ρ ← λρ + (1-λ)ψ             ║
+║  │  ⑦ 降温           │    T ← α × T                   ║
+║  └────────┬────────┘                                 ║
+║           ↓                                           ║
+║  ┌─────────────────┐                                 ║
+║  │ 输出最优解        │  best_solution + score + time   ║
+║  └─────────────────┘                                 ║
+║                                                      ║
+╚══════════════════════════════════════════════════════╝</code></pre>
+
+<hr>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="sec7">7. 复杂度分析</h2>
+
+<table>
+  <tr><th>阶段</th><th>复杂度</th><th>说明</th></tr>
+  <tr><td>问题生成</td><td><span class="math">O(n^2)</span></td><td>距离矩阵计算</td></tr>
+  <tr><td>GRASP 构造（单次）</td><td><span class="math">O(m \cdot n^2 \cdot L)</span></td><td>每轮枚举所有 (节点×路线×位置)</td></tr>
+  <tr><td>2-opt（单路线）</td><td><span class="math">O(L^2)</span></td><td>枚举所有 (i,j) 对</td></tr>
+  <tr><td>Relocate</td><td><span class="math">O(m^2 \cdot n \cdot L^2)</span></td><td>最贵的局部搜索算子</td></tr>
+  <tr><td>Exchange</td><td><span class="math">O(m^2 \cdot L^2)</span></td><td></td></tr>
+  <tr><td>ALNS Destroy（单次）</td><td><span class="math">O(n \log n)</span></td><td>排序/洗牌</td></tr>
+  <tr><td>ALNS Repair（单次）</td><td><span class="math">O(q \cdot m \cdot n \cdot L)</span></td><td>q = 被移除节点数（≈ 15% 的已访问节点）</td></tr>
+  <tr><td>ALNS 总复杂度</td><td><span class="math">O(\text{iter} \cdot (m^2 \cdot n \cdot L^2 + \text{repair}))</span></td><td>LS 主导，repair 次之</td></tr>
+</table>
+
+<p style="font-size:.84em;color:var(--muted);margin-top:8px">
+  <span class="math">n</span> = 总节点数，<span class="math">m</span> = 队员数，<span class="math">L</span> = 单条路径平均长度（远小于 <span class="math">n</span>），<span class="math">q</span> = 移除节点数
+</p>
+
+<h3>运行结果示例（n=30, m=3, Tmax=200）</h3>
+
+<table>
+  <tr><th>求解器</th><th>得分</th><th>耗时</th><th>策略</th></tr>
+  <tr><td>原始 Multi-start</td><td>399 / 1129 (35.3%)</td><td>~0.0s</td><td>10 次 GRASP + LS，取最优</td></tr>
+  <tr><td>ALNS</td><td>399 / 1129 (35.3%)</td><td>~0.01s</td><td>从 Multi-start 最优出发 → 500 轮 destroy/repair/LS</td></tr>
+</table>
+
+<p style="font-size:.84em;color:var(--muted)">
+  ALNS 从原始求解器的最优解出发，通过 destroy+repair 探索邻域，保持了解的质量。<br>
+  在更大的实例上（n=50, m=4），ALNS 的搜索能力更能体现。
+</p>
+
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll("span.math").forEach(el => {
+    try { katex.render(el.textContent, el, { throwOnError: false }); } catch(e) {}
+  });
+  document.querySelectorAll(".math-display").forEach(el => {
+    try { katex.render(el.textContent, el, { displayMode: true, throwOnError: false }); } catch(e) {}
+  });
+  renderMathInElement(document.body, {
+    delimiters: [
+      { left: "$$", right: "$$", display: true  },
+      { left: "$",  right: "$",  display: false }
+    ],
+    throwOnError: false
+  });
+  document.querySelectorAll("pre code").forEach(block => { hljs.highlightElement(block); });
+});
+</script>
+
+</body>
+</html>
