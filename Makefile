@@ -1,4 +1,4 @@
-.PHONY: all clean run
+.PHONY: all clean run toptw_solver
 
 all: toptw_solver
 

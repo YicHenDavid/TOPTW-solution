@@ -9,8 +9,22 @@
 
 namespace fs = std::filesystem;
 
-int main() {
-    std::string bench_dir = "benchmarks/c_r_rc_100_100";
+int main(int argc, char** argv) {
+    // Resolve benchmarks path relative to the executable, so it works
+    // regardless of which directory the user runs from.
+    std::string exe_dir = fs::path(argv[0]).parent_path().string();
+    std::string bench_dir = exe_dir + "/benchmarks/c_r_rc_100_100";
+
+    // Fallback: if run from project root (e.g. via ./build/toptw)
+    if (!fs::exists(bench_dir))
+        bench_dir = "benchmarks/c_r_rc_100_100";
+
+    if (!fs::exists(bench_dir)) {
+        std::cerr << "Error: cannot find benchmarks directory.\n"
+                  << "  Tried: " << bench_dir << "\n"
+                  << "  Run from the project root, or place the executable next to the benchmarks/ folder.\n";
+        return 1;
+    }
 
     std::cout << "\n====================================================" << std::endl;
     std::cout << "  TOPTW Solver — Benchmark Instances (29 total)" << std::endl;
