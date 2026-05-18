@@ -73,6 +73,12 @@ tr:nth-child(even) td{background:#fafbfc}
   <a href="#sec6">6. 完整流程图</a>
   <a href="#sec7">7. 算法复杂度</a>
   <a href="#sec8">8. 基准测试结果</a>
+  <a href="#sec9">9. Linux 运行指南</a>
+  <a class="l2" href="#sec9-1">9.1 环境要求 &amp; 编译</a>
+  <a class="l2" href="#sec9-2">9.2 命令行用法</a>
+  <a href="#sec10">10. 调试信息对照</a>
+  <a class="l2" href="#sec10-1">10.1 输出样本</a>
+  <a class="l2" href="#sec10-2">10.2 字段 → 代码映射</a>
 </nav>
 
 <main>
@@ -257,6 +263,144 @@ p_j = \frac{\rho_j}{\sum_k \rho_k}, \qquad \rho_{selected} = \lambda \cdot \rho_
 </table>
 <p>C 类时间窗宽（单个窗口可达 ~1000 单位），每节点分数高（=90），得分率 82%~99%。R/RC 类时间窗极窄（~10 单位），每节点分数低（=10），得分率 29%~44%。</p>
 <p>原始多起点求解器和 ALNS 在 29 个算例上均获总分 <strong>81950</strong>。ALNS 保持了原始求解器的解的质量，同时通过三层元启发式增加了鲁棒性。</p>
+
+<!-- ══════════════════════ 9 ══════════════════════ -->
+<h2 id="sec9">9. Linux 运行指南</h2>
+
+<h3 id="sec9-1">9.1 环境要求 &amp; 编译</h3>
+
+<table>
+  <tr><th>依赖</th><th>最低版本</th><th>Ubuntu/Debian 安装</th><th>Fedora/CentOS 安装</th></tr>
+  <tr><td>GCC 或 Clang</td><td>GCC 9+ / Clang 7+（支持 C++17）</td><td><code>sudo apt install g++</code></td><td><code>sudo dnf install gcc-c++</code></td></tr>
+  <tr><td>CMake</td><td>3.14+</td><td><code>sudo apt install cmake</code></td><td><code>sudo dnf install cmake</code></td></tr>
+  <tr><td>Git</td><td>任意</td><td><code>sudo apt install git</code></td><td><code>sudo dnf install git</code></td></tr>
+</table>
+
+<pre><code class="language-bash"># 1. 克隆项目
+git clone &lt;repo-url&gt; toptw
+cd toptw/CPP
+
+# 2. 编译
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+
+# 3. 运行全部 29 个算例
+./build/toptw</code></pre>
+
+<h3 id="sec9-2">9.2 命令行用法</h3>
+
+<table>
+  <tr><th>命令</th><th>效果</th></tr>
+  <tr><td><code>./build/toptw</code></td><td>跑全部 29 个算例，输出汇总表</td></tr>
+  <tr><td><code>./build/toptw --instance r101.txt</code></td><td>只跑 r101 一个算例，ALNS verbose 模式</td></tr>
+  <tr><td><code>./build/toptw --instance r101.txt --debug</code></td><td>单算例 + 逐轮调试输出（5 轮）</td></tr>
+</table>
+
+<p style="font-size:.84em;color:var(--muted)">
+  <code>--debug</code> 模式下只跑 5 轮以避免输出过多。如需更多轮，修改 <span class="file-tag">main.cpp</span> 中 <code>p.max_iterations</code> 的值。
+</p>
+
+<!-- ══════════════════════ 10 ══════════════════════ -->
+<h2 id="sec10">10. 调试信息对照</h2>
+
+<h3 id="sec10-1">10.1 输出样本（--debug 模式）</h3>
+
+<pre><code class="language-plaintext">── iter 1 ──────────────────────────────        ← ALNS 第 1 轮
+  selected: D[Worst] + R[Greedy]                ← Layer 3 选中的算子
+  removed 3 nodes: {84,91,78}                   ← 被 Destroy 移除的节点
+  tabu blocked 1 nodes: {7}                     ← Layer 2：这些节点在禁忌期内，被跳过
+  tabu list size: 7                              ← 当前禁忌列表中共有多少节点
+  repair score: 290.00  after LS: 290.00  LS delta: +0.00  ← Repair 后 → LS 后 → 增量
+  current: 290.00  best: 290.00  T: 49.75  accepted? accepted_worse ~  ← Layer 1 SA 决策
+  [LS] start score=290.00                        ← 局部搜索开始
+  [LS] iter 0  2opt:0.00  reloc:0.00  exch:0.00  total:0.00  ← 各算子贡献</code></pre>
+
+<h3 id="sec10-2">10.2 字段 → 代码 → 所属层 映射表</h3>
+
+<table>
+  <tr><th style="width:20%">调试输出字段</th><th style="width:18%">对应代码位置</th><th>含义</th><th>所属层</th></tr>
+  <tr>
+    <td><code>selected: D[X] + R[Y]</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>select_op()</code></td>
+    <td>轮盘赌根据当前权重选出的 destroy + repair 算子</td>
+    <td style="color:#059669">Layer 3: Adaptive Weights</td>
+  </tr>
+  <tr>
+    <td><code>removed N nodes: {…}</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>destroy_*()</code> 调用处</td>
+    <td>Destroy 算子实际移除的节点 ID 列表（最多显示 10 个）</td>
+    <td>Destroy 算子</td>
+  </tr>
+  <tr>
+    <td><code>tabu blocked N nodes: {…}</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>tabu_until.find(v)</code></td>
+    <td>被禁忌列表拦截的节点——operator 想移除它们，但因在禁期内被跳过</td>
+    <td style="color:#d97706">Layer 2: Tabu Search</td>
+  </tr>
+  <tr>
+    <td><code>tabu list size: N</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>tabu_until.size()</code></td>
+    <td>当前禁忌列表中的节点总数（= 曾经被移除且尚未过禁期的节点数）</td>
+    <td style="color:#d97706">Layer 2: Tabu Search</td>
+  </tr>
+  <tr>
+    <td><code>repair score / after LS / LS delta</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>score_before_ls</code>, <code>new_score</code>, <code>ls_delta</code></td>
+    <td>Repair 重插后的分数 → 局部搜索打磨后的分数 → 局部搜索的增量贡献</td>
+    <td>Repair + LS</td>
+  </tr>
+  <tr>
+    <td><code>[LS] iter N 2opt:… reloc:… exch:… total:…</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>apply_local_search()</code></td>
+    <td>局部搜索每轮迭代中 2-opt / relocate / exchange 各贡献的分数增量</td>
+    <td>LS（§4 三个算子）</td>
+  </tr>
+  <tr>
+    <td><code>current: X  best: Y  T: Z</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>current_score</code>, <code>best_score</code>, <code>T</code></td>
+    <td>当前解目标值 / 全局最优目标值 / SA 当前温度</td>
+    <td style="color:#dc2626">Layer 1: SA</td>
+  </tr>
+  <tr>
+    <td><code>accepted? GLOBAL_BEST ★</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>psi_idx == 0</code></td>
+    <td>新解比全局最优还好 → 最高奖励 ω₁</td>
+    <td style="color:#059669">Layer 3 权重组</td>
+  </tr>
+  <tr>
+    <td><code>accepted? improved ↑</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>psi_idx == 1</code></td>
+    <td>新解比当前解好（但未超全局最优）→ 奖励 ω₂</td>
+    <td style="color:#059669">Layer 3 权重组</td>
+  </tr>
+  <tr>
+    <td><code>accepted? accepted_worse ~</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>psi_idx == 2</code></td>
+    <td>新解更差，但被 SA 概率接受 → 小奖励 ω₃</td>
+    <td style="color:#dc2626">Layer 1: SA 决策</td>
+  </tr>
+  <tr>
+    <td><code>accepted? REJECTED ✗</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>psi_idx == 3</code></td>
+    <td>新解被 SA 拒绝 → 无奖励 ω₄=0</td>
+    <td style="color:#dc2626">Layer 1: SA 决策</td>
+  </tr>
+  <tr>
+    <td><code>Final weights: D[Random]=… D[Shaw]=…</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>w_destroy[]</code>, <code>w_repair[]</code></td>
+    <td>算法结束时各算子的最终权重——权重最高 = 历史表现最好的算子</td>
+    <td style="color:#059669">Layer 3: Adaptive Weights</td>
+  </tr>
+</table>
+
+<div class="callout" style="margin-top:16px">
+  <div class="callout-title">🔍 调试时重点关注什么</div>
+  <strong>① tabu blocked 太多</strong>（如 4/5 被拦）→ <code>tabu_tenure</code> 太大，降低到 6~8<br>
+  <strong>② LS delta 始终为 0</strong> → 解已经到了局部最优，LS 无法改进 → 尝试增大 destroy_pct<br>
+  <strong>③ accepted_worse ~ 连续出现但 best 不涨</strong> → SA 温度太高，降温太慢 → 降低 α_cool 到 0.98<br>
+  <strong>④ 某个算子权重持续走高</strong> → 自适应在工作，该算子在这个阶段最有效<br>
+  <strong>⑤ 所有权重趋同</strong> → λ 太大（历史权重太顽固）→ 降低 λ 到 0.7~0.8
+</div>
 
 </main>
 <script>
