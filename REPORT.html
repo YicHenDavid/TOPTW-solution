@@ -266,6 +266,13 @@ return best</code></pre>
   如果要只用 B，可以跳过 A，用 GRASP 直接给 B 做初始解（B 内部已包含此逻辑）。
 </div>
 
+<div class="callout" style="margin-top:12px;border-left-color:#f59e0b;background:#fffbeb">
+  <div class="callout-title" style="color:#d97706">⚠ 关于 ALNS 的实际优化效果</div>
+  <p style="font-size:.84em">
+    本项目的 ALNS（求解器 B）是一个<strong>为理解框架原理而构建的教学实现</strong>。在 29 个标准算例上，经过 4 轮调参后，B 的得分与 A 持平但未能超越。这不是 ALNS 框架本身的问题——工业级 ALNS 在更大算例上已被证明有效——而是本实现中 destroy/repair 算子和 LS 组合在当前算例规模下没有产生超越 GRASP 基线的增量。详见 §11 调参记录末尾的声明。
+  </p>
+</div>
+
 <h3 style="margin-top:24px">求解器 B（ALNS）详细流程</h3>
 <pre><code class="language-plaintext">╔═══════════════════════════════════════════════════════════╗
 ║                  ALNS 求解器详细流程                        ║
@@ -516,6 +523,25 @@ cmake --build build
   <strong>② destroy 不宜过大</strong>——repair 只是贪心启发式，无法从大规模破坏中恢复最优结构<br>
   <strong>③ SA 温度要匹配分数尺度</strong>——分数差可达几百点时，T=30 不够，需要 T≥100<br>
   <strong>④ 自适应权重在 200+ 轮后出现明显分化</strong>——Shaw Removal + Noise Insertion 是最优组合
+</div>
+
+<div class="callout" style="margin-top:16px;border-left-color:#f59e0b;background:#fffbeb">
+  <div class="callout-title" style="color:#d97706">⚠ 重要声明：本 ALNS 的实现定位与局限</div>
+  <p style="font-size:.84em">
+    本项目的 ALNS 求解器是<strong>为理解 ALNS 框架原理而构造的教学实现</strong>，而非面向竞赛级优化目标的工程产物。<br>
+    经过 4 轮调参（§11.1），求解器 B 在 29 个算例上的得分与求解器 A 持平（均为 81950），<strong>未能显著超越基线</strong>。<br><br>
+    原因在于：
+  </p>
+  <ul style="font-size:.82em">
+    <li><strong>destroy/repair 实现较基础</strong>——Destroy 算子仅基于距离/性价比/随机，缺乏更精细的路径分析（如 ejection chain、request bank 等高级技术）</li>
+    <li><strong>repair 的贪心本质</strong>——Greedy/Regret/Noise 插入无法保证恢复后的解质量能超越全局最优的 GRASP 构造</li>
+    <li><strong>LS 算子是基础三件套</strong>——2-opt + relocate + exchange 在 TOPTW 100 节点规模上已足够强，ALNS 的增量贡献被 LS 覆盖</li>
+    <li><strong>算例规模较小</strong>——100 节点下 GRASP+LS 本身已接近最优，ALNS 的优势在更大规模（500+ 节点）或更复杂约束下才能体现</li>
+  </ul>
+  <p style="font-size:.82em">
+    本项目的价值在于<strong>完整演示了 ALNS 的三层架构（SA + Tabu + Adaptive Weights）</strong>以及<strong>如何通过调试输出来诊断和调参</strong>。
+    若追求更高的优化效果，需替换更复杂的 destroy/repair 算子，或引入精确搜索子模块。
+  </p>
 </div>
 
 <div class="callout" style="margin-top:16px">
