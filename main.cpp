@@ -27,7 +27,9 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "\n====================================================" << std::endl;
-    std::cout << "  TOPTW Solver — Benchmark Instances (29 total)" << std::endl;
+    std::cout << "  TOPTW + ALNS Solver — 29 Benchmark Instances" << std::endl;
+    std::cout << "  GitHub: github.com/YicHenDavid/TOPTW-solution" << std::endl;
+    std::cout << "  Full report: open REPORT.html in your browser" << std::endl;
     std::cout << "====================================================\n" << std::endl;
 
     double total_orig = 0, total_alns = 0, time_orig = 0, time_alns = 0;
