@@ -51,18 +51,19 @@ CPP/
 
 ### Linux
 ```bash
-# Install dependencies
-sudo apt install g++ cmake git    # Ubuntu/Debian
-sudo dnf install gcc-c++ cmake git # Fedora
-
-# Build & run
-cd CPP
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-./build/toptw                     # all 29 instances
+sudo apt install g++ cmake make    # Ubuntu/Debian
+sudo dnf install gcc-c++ cmake make # Fedora
+make                                # builds ./toptw_solver
+./toptw_solver                      # all 29 instances
 ```
 
 ### macOS
+```bash
+make                                # builds ./toptw_solver
+./toptw_solver
+```
+
+Or with CMake directly:
 ```bash
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build
@@ -72,7 +73,10 @@ cmake --build build
 ## Usage
 
 ```bash
-./build/toptw                 # Full benchmark (29 instances)
+make                   # build
+./toptw_solver         # run all 29 instances
+make run               # build + run
+make clean             # remove build artifacts
 ```
 
 ## Benchmark Results (29 instances, 100 customers each)
