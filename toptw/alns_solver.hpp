@@ -248,14 +248,30 @@ repair_noise(const std::vector<std::vector<int>>& partial,
 
 inline void apply_local_search(std::vector<std::vector<int>>& sol,
                                 const Problem& prob,
-                                int max_iter = 20) {
+                                int max_iter = 20,
+                                bool debug = false) {
+    if (debug) {
+        double init = solution_score(sol, prob);
+        std::cout << "  [LS] start score=" << init << std::endl;
+    }
     for (int iter = 0; iter < max_iter; iter++) {
         double prev = solution_score(sol, prob);
         for (int t = 0; t < prob.m; t++)
             sol[t] = two_opt_route(sol[t], prob);
+        double after_2opt = solution_score(sol, prob);
         sol = relocate_move(sol, prob);
+        double after_relocate = solution_score(sol, prob);
         sol = exchange_move(sol, prob);
-        if (solution_score(sol, prob) <= prev) break;
+        double after_exchange = solution_score(sol, prob);
+        if (debug) {
+            std::cout << "  [LS] iter " << iter
+                      << "  2opt:" << (after_2opt - prev)
+                      << "  reloc:" << (after_relocate - after_2opt)
+                      << "  exch:" << (after_exchange - after_relocate)
+                      << "  total:" << (after_exchange - prev)
+                      << std::endl;
+        }
+        if (after_exchange <= prev) break;
     }
 }
 
@@ -292,6 +308,7 @@ struct ALNSParams {
     double noise_level   = 0.15;  // noise level for noise insertion
     int ls_max_iter      = 20;    // local search iterations per ALNS cycle
     bool verbose         = true;
+    bool debug           = false; // per-iteration detail output
 };
 
 inline ALNSResult solve_alns(const Problem& prob, const ALNSParams& p = ALNSParams{}) {
@@ -306,7 +323,7 @@ inline ALNSResult solve_alns(const Problem& prob, const ALNSParams& p = ALNSPara
             std::mt19937_64 init_rng(restart * 137 + 1);
             double alpha = std::min(0.3, restart * 0.03);
             auto sol = construct_greedy(prob, init_rng, alpha);
-            apply_local_search(sol, prob, 50);
+            apply_local_search(sol, prob, 50, false);
             double sc = solution_score(sol, prob);
             if (sc > best_score) { best_score = sc; best_sol = sol; }
         }
@@ -417,8 +434,39 @@ inline ALNSResult solve_alns(const Problem& prob, const ALNSParams& p = ALNSPara
             tabu_until[v] = iter + p.tabu_tenure;
 
         // ── Local search ──
-        apply_local_search(repaired, prob, p.ls_max_iter);
+        double score_before_ls = solution_score(repaired, prob);
+        apply_local_search(repaired, prob, p.ls_max_iter, p.debug);
         double new_score = solution_score(repaired, prob);
+        double ls_delta = new_score - score_before_ls;
+
+        // ── Debug output ──
+        if (p.debug) {
+            std::cout << "\n── iter " << iter
+                      << " ──────────────────────────────" << std::endl;
+            std::cout << "  selected: D[" << d_names[d_idx] << "] + R["
+                      << r_names[r_idx] << "]" << std::endl;
+            std::cout << "  removed " << allowed_removed.size() << " nodes: {";
+            for (size_t i = 0; i < allowed_removed.size() && i < 10; i++)
+                std::cout << (i ? "," : "") << allowed_removed[i];
+            if (allowed_removed.size() > 10) std::cout << ",...";
+            std::cout << "}" << std::endl;
+            if (!tabu_removed.empty()) {
+                std::cout << "  tabu blocked " << tabu_removed.size() << " nodes: {";
+                for (size_t i = 0; i < tabu_removed.size() && i < 10; i++)
+                    std::cout << (i ? "," : "") << tabu_removed[i];
+                if (tabu_removed.size() > 10) std::cout << ",...";
+                std::cout << "}" << std::endl;
+            }
+            std::cout << "  tabu list size: " << tabu_until.size() << std::endl;
+            std::cout << "  repair score: " << score_before_ls
+                      << "  after LS: " << new_score
+                      << "  LS delta: " << (ls_delta >= 0 ? "+" : "") << ls_delta
+                      << std::endl;
+            std::cout << "  current: " << current_score
+                      << "  best: " << best_score
+                      << "  T: " << std::fixed << std::setprecision(2) << T
+                      << "  accepted? ";
+        }
 
         // ── SA Acceptance (Layer 1) ──
         int psi_idx;
@@ -446,6 +494,12 @@ inline ALNSResult solve_alns(const Problem& prob, const ALNSParams& p = ALNSPara
         if (new_score > current_score || psi_idx != 3) {
             current_sol = repaired;
             current_score = new_score;
+        }
+
+        // Debug: print acceptance result
+        if (p.debug) {
+            const char* labels[] = {"GLOBAL_BEST ★", "improved ↑", "accepted_worse ~", "REJECTED ✗"};
+            std::cout << labels[psi_idx] << std::endl;
         }
 
         iter_since_best++;
