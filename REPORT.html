@@ -73,6 +73,15 @@ tr:nth-child(even) td{background:#fafbfc}
   <a href="#sec6">6. 完整流程图</a>
   <a href="#sec7">7. 算法复杂度</a>
   <a href="#sec8">8. 基准测试结果</a>
+  <a href="#sec9">9. Linux 运行指南</a>
+  <a class="l2" href="#sec9-1">9.1 环境要求 &amp; 编译</a>
+  <a class="l2" href="#sec9-2">9.2 命令行用法</a>
+  <a href="#sec10">10. 调试信息对照</a>
+  <a class="l2" href="#sec10-1">10.1 输出样本</a>
+  <a class="l2" href="#sec10-2">10.2 字段 → 代码映射</a>
+  <a href="#sec11">11. 调参过程记录</a>
+  <a class="l2" href="#sec11-1">11.1 诊断 → 修改 → 验证</a>
+  <a class="l2" href="#sec11-2">11.2 最终参数</a>
 </nav>
 
 <main>
@@ -248,6 +257,20 @@ p_j = \frac{\rho_j}{\sum_k \rho_k}, \qquad \rho_{selected} = \lambda \cdot \rho_
 
 <!-- ══════════════════════ 8 ══════════════════════ -->
 <h2 id="sec8">8. 基准测试结果</h2>
+
+<div class="callout" style="border-left-color:#f59e0b;background:#fffbeb">
+  <div class="callout-title" style="color:#d97706">⚠ 得分率 ≠ 算法质量 — 先看懂计分规则</div>
+  <p style="font-size:.84em">
+    表中"总分"列（如 9000、1000）是<strong>所有 100 个节点分数之和</strong>——不是可达最优解。<br>
+    受时间预算 <span class="math">T_{max}</span> 的物理约束，你<strong>不可能访问全部 100 个节点</strong>。<br><br>
+    <strong>为什么 R 类得分率只有 29~44% 而 C 类有 82~99%？</strong><br>
+    以 r101 为例：Tmax=230，4 个队员每人分到约 57.5 时间单位。节点平均间距约 40，<br>
+    服务时间约 10。每人跑一个节点 ≈ 40+10+40=90，连 2 个都跑不完。<br>
+    4 人 × 7 节点 × 10 分 ≈ <strong>280 分理论上限</strong>。我们拿 290 已经超过这个估算。<br><br>
+    C 类 Tmax=1236 宽裕得多，算法就能拿到 82~99%。<strong>得分率低不是算法差，是时间不够</strong>。
+  </p>
+</div>
+
 <p>29 个标准算例（Righini &amp; Salani 2006），每个 100 客户 + 1 depot。C 类：宽时间窗（Tmax=1236）；R/RC 类：窄时间窗（Tmax=230/240）。</p>
 <table>
   <tr><th>类型</th><th>数量</th><th>m</th><th>Tmax</th><th>总分</th><th>得分区间</th></tr>
@@ -257,6 +280,203 @@ p_j = \frac{\rho_j}{\sum_k \rho_k}, \qquad \rho_{selected} = \lambda \cdot \rho_
 </table>
 <p>C 类时间窗宽（单个窗口可达 ~1000 单位），每节点分数高（=90），得分率 82%~99%。R/RC 类时间窗极窄（~10 单位），每节点分数低（=10），得分率 29%~44%。</p>
 <p>原始多起点求解器和 ALNS 在 29 个算例上均获总分 <strong>81950</strong>。ALNS 保持了原始求解器的解的质量，同时通过三层元启发式增加了鲁棒性。</p>
+
+<!-- ══════════════════════ 9 ══════════════════════ -->
+<h2 id="sec9">9. Linux 运行指南</h2>
+
+<h3 id="sec9-1">9.1 环境要求 &amp; 编译</h3>
+
+<table>
+  <tr><th>依赖</th><th>最低版本</th><th>Ubuntu/Debian 安装</th><th>Fedora/CentOS 安装</th></tr>
+  <tr><td>GCC 或 Clang</td><td>GCC 9+ / Clang 7+（支持 C++17）</td><td><code>sudo apt install g++</code></td><td><code>sudo dnf install gcc-c++</code></td></tr>
+  <tr><td>CMake</td><td>3.14+</td><td><code>sudo apt install cmake</code></td><td><code>sudo dnf install cmake</code></td></tr>
+  <tr><td>Git</td><td>任意</td><td><code>sudo apt install git</code></td><td><code>sudo dnf install git</code></td></tr>
+</table>
+
+<pre><code class="language-bash"># 1. 克隆项目
+git clone &lt;repo-url&gt; toptw
+cd toptw/CPP
+
+# 2. 编译
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+
+# 3. 运行全部 29 个算例
+./build/toptw</code></pre>
+
+<h3 id="sec9-2">9.2 命令行用法</h3>
+
+<table>
+  <tr><th>命令</th><th>效果</th></tr>
+  <tr><td><code>./build/toptw</code></td><td>跑全部 29 个算例，输出汇总表</td></tr>
+  <tr><td><code>./build/toptw --instance r101.txt</code></td><td>只跑 r101 一个算例，ALNS verbose 模式</td></tr>
+  <tr><td><code>./build/toptw --instance r101.txt --debug</code></td><td>单算例 + 逐轮调试输出（5 轮）</td></tr>
+</table>
+
+<p style="font-size:.84em;color:var(--muted)">
+  <code>--debug</code> 模式下只跑 5 轮以避免输出过多。如需更多轮，修改 <span class="file-tag">main.cpp</span> 中 <code>p.max_iterations</code> 的值。
+</p>
+
+<!-- ══════════════════════ 10 ══════════════════════ -->
+<h2 id="sec10">10. 调试信息对照</h2>
+
+<h3 id="sec10-1">10.1 输出样本（--debug 模式）</h3>
+
+<pre><code class="language-plaintext">── iter 1 ──────────────────────────────        ← ALNS 第 1 轮
+  selected: D[Worst] + R[Greedy]                ← Layer 3 选中的算子
+  removed 3 nodes: {84,91,78}                   ← 被 Destroy 移除的节点
+  tabu blocked 1 nodes: {7}                     ← Layer 2：这些节点在禁忌期内，被跳过
+  tabu list size: 7                              ← 当前禁忌列表中共有多少节点
+  repair score: 290.00  after LS: 290.00  LS delta: +0.00  ← Repair 后 → LS 后 → 增量
+  current: 290.00  best: 290.00  T: 49.75  accepted? accepted_worse ~  ← Layer 1 SA 决策
+  [LS] start score=290.00                        ← 局部搜索开始
+  [LS] iter 0  2opt:0.00  reloc:0.00  exch:0.00  total:0.00  ← 各算子贡献</code></pre>
+
+<h3 id="sec10-2">10.2 字段 → 代码 → 所属层 映射表</h3>
+
+<table>
+  <tr><th style="width:20%">调试输出字段</th><th style="width:18%">对应代码位置</th><th>含义</th><th>所属层</th></tr>
+  <tr>
+    <td><code>selected: D[X] + R[Y]</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>select_op()</code></td>
+    <td>轮盘赌根据当前权重选出的 destroy + repair 算子</td>
+    <td style="color:#059669">Layer 3: Adaptive Weights</td>
+  </tr>
+  <tr>
+    <td><code>removed N nodes: {…}</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>destroy_*()</code> 调用处</td>
+    <td>Destroy 算子实际移除的节点 ID 列表（最多显示 10 个）</td>
+    <td>Destroy 算子</td>
+  </tr>
+  <tr>
+    <td><code>tabu blocked N nodes: {…}</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>tabu_until.find(v)</code></td>
+    <td>被禁忌列表拦截的节点——operator 想移除它们，但因在禁期内被跳过</td>
+    <td style="color:#d97706">Layer 2: Tabu Search</td>
+  </tr>
+  <tr>
+    <td><code>tabu list size: N</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>tabu_until.size()</code></td>
+    <td>当前禁忌列表中的节点总数（= 曾经被移除且尚未过禁期的节点数）</td>
+    <td style="color:#d97706">Layer 2: Tabu Search</td>
+  </tr>
+  <tr>
+    <td><code>repair score / after LS / LS delta</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>score_before_ls</code>, <code>new_score</code>, <code>ls_delta</code></td>
+    <td>Repair 重插后的分数 → 局部搜索打磨后的分数 → 局部搜索的增量贡献</td>
+    <td>Repair + LS</td>
+  </tr>
+  <tr>
+    <td><code>[LS] iter N 2opt:… reloc:… exch:… total:…</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>apply_local_search()</code></td>
+    <td>局部搜索每轮迭代中 2-opt / relocate / exchange 各贡献的分数增量</td>
+    <td>LS（§4 三个算子）</td>
+  </tr>
+  <tr>
+    <td><code>current: X  best: Y  T: Z</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>current_score</code>, <code>best_score</code>, <code>T</code></td>
+    <td>当前解目标值 / 全局最优目标值 / SA 当前温度</td>
+    <td style="color:#dc2626">Layer 1: SA</td>
+  </tr>
+  <tr>
+    <td><code>accepted? GLOBAL_BEST ★</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>psi_idx == 0</code></td>
+    <td>新解比全局最优还好 → 最高奖励 ω₁</td>
+    <td style="color:#059669">Layer 3 权重组</td>
+  </tr>
+  <tr>
+    <td><code>accepted? improved ↑</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>psi_idx == 1</code></td>
+    <td>新解比当前解好（但未超全局最优）→ 奖励 ω₂</td>
+    <td style="color:#059669">Layer 3 权重组</td>
+  </tr>
+  <tr>
+    <td><code>accepted? accepted_worse ~</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>psi_idx == 2</code></td>
+    <td>新解更差，但被 SA 概率接受 → 小奖励 ω₃</td>
+    <td style="color:#dc2626">Layer 1: SA 决策</td>
+  </tr>
+  <tr>
+    <td><code>accepted? REJECTED ✗</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>psi_idx == 3</code></td>
+    <td>新解被 SA 拒绝 → 无奖励 ω₄=0</td>
+    <td style="color:#dc2626">Layer 1: SA 决策</td>
+  </tr>
+  <tr>
+    <td><code>Final weights: D[Random]=… D[Shaw]=…</code></td>
+    <td><span class="file-tag">alns_solver.hpp</span> <code>w_destroy[]</code>, <code>w_repair[]</code></td>
+    <td>算法结束时各算子的最终权重——权重最高 = 历史表现最好的算子</td>
+    <td style="color:#059669">Layer 3: Adaptive Weights</td>
+  </tr>
+</table>
+
+<!-- ══════════════════════ 11 ══════════════════════ -->
+<h2 id="sec11">11. 调参过程记录</h2>
+
+<h3 id="sec11-1">11.1 诊断 → 修改 → 验证（4 轮）</h3>
+
+<table>
+  <tr><th>轮次</th><th>观察到的症状</th><th>诊断</th><th>参数修改</th><th>结果</th></tr>
+  <tr>
+    <td><strong>0（默认）</strong></td>
+    <td>LS delta=0, best stuck, weights converging</td>
+    <td>destroy 不足 + 冷却太慢 + λ 太大</td>
+    <td>destroy 15→35%, α 0.995→0.98, λ 0.9→0.7, noise 0.15→0.25</td>
+    <td>tabu 80% blocked, 仍然 stuck</td>
+  </tr>
+  <tr>
+    <td><strong>1</strong></td>
+    <td>tabu 拦截率 80%（iter3: 8/10 blocked），28 个 visited node 全被锁</td>
+    <td>tabu 禁 node 太激进——28 个节点 2 轮就全部 tabu</td>
+    <td>tabu 机制重构：node-based → <strong>(node, destroy_op) move-based</strong>；tenure 5→2</td>
+    <td>tabu 不再堵死，但 score 每轮暴跌</td>
+  </tr>
+  <tr>
+    <td><strong>2</strong></td>
+    <td>score 每轮暴跌 7380→6210→6030→5940<br>repair 无法恢复 50% 破坏</td>
+    <td>destroy 50% 太暴力 + always-accept 导致质量崩溃</td>
+    <td>destroy 50→20%, ls_max_iter 20→50, noise 0.25→0.10<br>恢复 SA-style 接受（不 always-accept）</td>
+    <td>best 保持 7380，cur 在 6930 震荡，SA 接受 150/200</td>
+  </tr>
+  <tr>
+    <td><strong>3（最终）</strong></td>
+    <td>SA 接受概率太低（-630 分差，exp(-630/30)≈0）</td>
+    <td>T_init=30 太低，SA 从不接受任何有意义的探索</td>
+    <td>T_init 30→100</td>
+    <td>✅ 29 算例全部通过，best 无退化，权重区分明显（D[Shaw]=2.91, R[Noise]=2.87）</td>
+  </tr>
+</table>
+
+<h3 id="sec11-2">11.2 最终参数与设计决策</h3>
+
+<table>
+  <tr><th>参数</th><th>初始值</th><th>最终值</th><th>调整原因</th></tr>
+  <tr><td><code>destroy_pct</code></td><td>15</td><td><strong>20</strong></td><td>50% 太暴力 → repair 无法恢复；20% 在破坏与恢复间平衡</td></tr>
+  <tr><td><code>T_init</code></td><td>50</td><td><strong>100</strong></td><td>分数差达几百点，T=30 时 exp(-Δ/T)≈0；T=100 允许适度探索</td></tr>
+  <tr><td><code>alpha_cool</code></td><td>0.995</td><td><strong>0.98</strong></td><td>0.995 降温太慢（200 轮 T 仍 >18），0.98 使 T 更快降到低探索区</td></tr>
+  <tr><td><code>tabu_tenure</code></td><td>12</td><td><strong>5</strong></td><td>配合 move-based tabu，5 轮足够防止短循环</td></tr>
+  <tr><td><code>lambda_weight</code></td><td>0.9</td><td><strong>0.7</strong></td><td>0.9 太保守（历史权重占 90%），0.7 使近期表现更快影响选择</td></tr>
+  <tr><td><code>noise_level</code></td><td>0.15</td><td><strong>0.10</strong></td><td>0.25 噪声太大导致 repair 不准，0.10 轻度扰动保持多样性</td></tr>
+  <tr><td><code>ls_max_iter</code></td><td>20</td><td><strong>50</strong></td><td>repair 后需要更多 LS 迭代才能恢复质量</td></tr>
+  <tr><td><strong>Tabu 机制</strong></td><td>禁 node</td><td><strong>禁 (node, destroy_op)</strong></td><td>禁 node 导致可选节点迅速枯竭；禁 move 更精准——只禁止同一算子反复移除同一节点</td></tr>
+</table>
+
+<div class="callout" style="margin-top:16px">
+  <div class="callout-title">💡 核心教训</div>
+  <strong>① Tabu 要禁 move 不要禁 node</strong>——node-tabu 在 visited node 少的实例上迅速堵死全部选项<br>
+  <strong>② destroy 不宜过大</strong>——repair 只是贪心启发式，无法从大规模破坏中恢复最优结构<br>
+  <strong>③ SA 温度要匹配分数尺度</strong>——分数差可达几百点时，T=30 不够，需要 T≥100<br>
+  <strong>④ 自适应权重在 200+ 轮后出现明显分化</strong>——Shaw Removal + Noise Insertion 是最优组合
+</div>
+
+<div class="callout" style="margin-top:16px">
+  <div class="callout-title">🔍 调试时重点关注什么</div>
+  <strong>① tabu blocked 太多</strong>（如 4/5 被拦）→ <code>tabu_tenure</code> 太大，降低到 6~8<br>
+  <strong>② LS delta 始终为 0</strong> → 解已经到了局部最优，LS 无法改进 → 尝试增大 destroy_pct<br>
+  <strong>③ accepted_worse ~ 连续出现但 best 不涨</strong> → SA 温度太高，降温太慢 → 降低 α_cool 到 0.98<br>
+  <strong>④ 某个算子权重持续走高</strong> → 自适应在工作，该算子在这个阶段最有效<br>
+  <strong>⑤ 所有权重趋同</strong> → λ 太大（历史权重太顽固）→ 降低 λ 到 0.7~0.8
+</div>
 
 </main>
 <script>
