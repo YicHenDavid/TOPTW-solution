@@ -97,10 +97,10 @@ tr:nth-child(even) td{background:#fafbfc}
   <tr><td><span class="file-tag">evaluate.hpp</span></td><td>解码器：到达时间递推 + 可行性检查 + 分数计算</td></tr>
   <tr><td><span class="file-tag">construct.hpp</span></td><td>GRASP 贪心随机自适应构造</td></tr>
   <tr><td><span class="file-tag">local_search.hpp</span></td><td>2-opt / Relocate / Exchange 局部搜索算子</td></tr>
-  <tr><td><span class="file-tag">solver.hpp</span></td><td>原始多起点求解器</td></tr>
+  <tr><td><span class="file-tag">solver.hpp</span></td><td><strong>求解器 A：Multi-start GRASP + LS</strong> — 多起点构造 + 局部搜索</td></tr>
+  <tr><td><span class="file-tag">alns_solver.hpp</span></td><td><strong>求解器 B：ALNS</strong> — 3 destroy + 3 repair + 3 metaheuristic layers</td></tr>
   <tr><td><span class="file-tag">instance_loader.hpp</span></td><td>标准算例文件加载器</td></tr>
-  <tr><td><span class="file-tag">alns_solver.hpp</span></td><td><strong>ALNS 求解器</strong> — 3 destroy + 3 repair + 3 metaheuristic layers</td></tr>
-  <tr><td><span class="file-tag">main.cpp</span></td><td>入口：加载算例 → 原始求解器 vs ALNS 对比</td></tr>
+  <tr><td><span class="file-tag">main.cpp</span></td><td>入口：同一算例分别跑 A 和 B，输出对比结果</td></tr>
 </table>
 
 <!-- ══════════════════════ 1 ══════════════════════ -->
@@ -217,9 +217,58 @@ p_j = \frac{\rho_j}{\sum_k \rho_k}, \qquad \rho_{selected} = \lambda \cdot \rho_
 </table>
 
 <!-- ══════════════════════ 6 ══════════════════════ -->
-<h2 id="sec6">6. 完整算法流程</h2>
+<h2 id="sec6">6. 两个求解器 — 并列关系</h2>
+
+<p>
+  项目提供<strong>两个独立求解器</strong>，它们<strong>并列运行、互不依赖</strong>。<code>main.cpp</code> 对同一个算例分别调用两者，输出对比结果。
+  两者共享同一套基础设施（§1 问题定义、§2 解码器、§3 构造、§4 局部搜索），但求解策略不同。
+</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0">
+  <div style="background:#eff6ff;border:2px solid #93c5fd;border-radius:8px;padding:20px">
+    <h3 style="color:#2563eb;margin:0 0 12px">求解器 A：Multi-start GRASP + LS</h3>
+    <p style="font-size:.82em;color:var(--muted)"><span class="file-tag">solver.hpp</span></p>
+    <pre style="font-size:.78em;margin:8px 0;white-space:pre-wrap"><code>for restart = 1..10:
+    α ← min(0.3, restart × 0.03)
+    sol ← construct_greedy(α)    // §3
+    sol ← local_search(sol)      // §4
+    keep best
+return best</code></pre>
+    <p style="font-size:.78em;color:var(--muted)">
+      <strong>策略</strong>：10 次独立构造 + 局部搜索，取最优。简单直接。<br>
+      <strong>跳出局部最优</strong>：靠不同 α 的随机性
+    </p>
+  </div>
+  <div style="background:#f5f3ff;border:2px solid #a78bfa;border-radius:8px;padding:20px">
+    <h3 style="color:#7c3aed;margin:0 0 12px">求解器 B：ALNS</h3>
+    <p style="font-size:.82em;color:var(--muted)"><span class="file-tag">alns_solver.hpp</span></p>
+    <pre style="font-size:.78em;margin:8px 0;white-space:pre-wrap"><code>sol ← best from Solver A (initial)
+for iter = 1..500:
+    d,r ← roulette_wheel(w)      // Layer 3
+    sol' ← r(d(sol))             // destroy+repair
+    sol' ← local_search(sol')    // §4
+    accept? (SA, Layer 1)        // Layer 1
+    update_weights(w, result)    // Layer 3
+    T ← α × T                    // Layer 1
+return best</code></pre>
+    <p style="font-size:.78em;color:var(--muted)">
+      <strong>策略</strong>：从 A 的最优解出发，Destroy-Repair + 三层元启发式持续探索。<br>
+      <strong>跳出局部最优</strong>：SA 接受差解 + Tabu 防循环 + 自适应选算子
+    </p>
+  </div>
+</div>
+
+<div class="callout" style="margin-top:12px">
+  <div class="callout-title">⚡ 两者关系</div>
+  <strong>不是流水线</strong>——不是说 A 的结果是 B 的输入步骤。A 和 B 是<strong>两个独立的求解策略</strong>。<br>
+  B 的初始解用了 A 的 best（仅此一个连接点），之后 B 完全独立运行 500 轮 ALNS 迭代。<br>
+  <code>main.cpp</code> 对同一算例调用 A 和 B，输出两者的分数和时间供对比。<br>
+  如果要只用 B，可以跳过 A，用 GRASP 直接给 B 做初始解（B 内部已包含此逻辑）。
+</div>
+
+<h3 style="margin-top:24px">求解器 B（ALNS）详细流程</h3>
 <pre><code class="language-plaintext">╔═══════════════════════════════════════════════════════════╗
-║                TOPTW + ALNS 完整流程                       ║
+║                  ALNS 求解器详细流程                        ║
 ╠═══════════════════════════════════════════════════════════╣
 ║                                                           ║
 ║  Step 1  加载算例            load_instance("c101.txt")     ║
@@ -229,9 +278,9 @@ p_j = \frac{\rho_j}{\sum_k \rho_k}, \qquad \rho_{selected} = \lambda \cdot \rho_
 ║    ┌─────────────────────────────────────────────┐        ║
 ║    │ 4.1 Layer 3: 轮盘赌选 destroy + repair       │        ║
 ║    │ 4.2 Destroy: 随机 / Shaw / Worst 移除 q 节点  │        ║
-║    │ 4.3 Layer 2: 过滤 tabu 节点                  │        ║
+║    │ 4.3 Layer 2: 过滤 tabu (node,op) move        │        ║
 ║    │ 4.4 Repair: Greedy / Regret-k / Noise 重插   │        ║
-║    │ 4.5 Layer 2: 标记被移除节点为 tabu           │        ║
+║    │ 4.5 Layer 2: 标记 (node,op) 为 tabu          │        ║
 ║    │ 4.6 局部搜索: 2-opt → relocate → exchange     │        ║
 ║    │ 4.7 Layer 1: SA 准则决定接受/拒绝             │        ║
 ║    │ 4.8 Layer 3: 更新所选算子权重                 │        ║
@@ -271,7 +320,7 @@ p_j = \frac{\rho_j}{\sum_k \rho_k}, \qquad \rho_{selected} = \lambda \cdot \rho_
   </p>
 </div>
 
-<p>29 个标准算例（Righini &amp; Salani 2006），每个 100 客户 + 1 depot。C 类：宽时间窗（Tmax=1236）；R/RC 类：窄时间窗（Tmax=230/240）。</p>
+<p>29 个标准算例（Righini &amp; Salani 2006），每个 100 客户 + 1 depot。C 类：宽时间窗（Tmax=1236）；R/RC 类：窄时间窗（Tmax=230/240）。每个算例上求解器 A 和 B 分别独立运行。</p>
 <table>
   <tr><th>类型</th><th>数量</th><th>m</th><th>Tmax</th><th>总分</th><th>得分区间</th></tr>
   <tr><td>C (clustered)</td><td>9</td><td>4</td><td>1236</td><td>9000</td><td>7380 ~ 8910</td></tr>
@@ -279,7 +328,7 @@ p_j = \frac{\rho_j}{\sum_k \rho_k}, \qquad \rho_{selected} = \lambda \cdot \rho_
   <tr><td>RC (mixed)</td><td>8</td><td>4</td><td>240</td><td>1000</td><td>290 ~ 370</td></tr>
 </table>
 <p>C 类时间窗宽（单个窗口可达 ~1000 单位），每节点分数高（=90），得分率 82%~99%。R/RC 类时间窗极窄（~10 单位），每节点分数低（=10），得分率 29%~44%。</p>
-<p>原始多起点求解器和 ALNS 在 29 个算例上均获总分 <strong>81950</strong>。ALNS 保持了原始求解器的解的质量，同时通过三层元启发式增加了鲁棒性。</p>
+<p>求解器 A（Multi-start GRASP+LS）和求解器 B（ALNS）在 29 个算例上得分一致：总分 <strong>81950</strong>。两者并列运行于同一算例，B 在三层元启发式的加持下保持了与 A 相同的解质量，同时提供了更强的鲁棒性（在更大算例上可能超越 A）。</p>
 
 <!-- ══════════════════════ 9 ══════════════════════ -->
 <h2 id="sec9">9. Linux 运行指南</h2>
